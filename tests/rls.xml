@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<!-- This program is free software; you can redistribute it and/or      -->
+<!-- modify it under the terms of the GNU General Public License as     -->
+<!-- published by the Free Software Foundation; either version 2 of the -->
+<!-- License, or (at your option) any later version.                    -->
+<!--                                                                    -->
+<!-- This program is distributed in the hope that it will be useful,    -->
+<!-- but WITHOUT ANY WARRANTY; without even the implied warranty of     -->
+<!-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the      -->
+<!-- GNU General Public License for more details.                       -->
+<!--                                                                    -->
+<!-- You should have received a copy of the GNU General Public License  -->
+<!-- along with this program; if not, write to the                      -->
+<!-- Free Software Foundation, Inc.,                                    -->
+<!-- 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA             -->
+<!--                                                                    -->
+<!--                 RLS watcher (alice) scenario.                      -->
+<!--                                                                    -->
+
+<scenario name="RLS watcher register and subscribe">
+  
+  <!-- 1: Register user   -->
+  <send retrans="500">
+    <![CDATA[
+
+    REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+    Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+    Max-Forwards: 70
+    To: <sip:[service]@[remote_ip]:[remote_port]>
+    From: <sip:[service]@[remote_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]
+    Call-ID: [call_id]
+    Contact: <sip:[service]@[local_ip]:[local_port];line=[service]>
+    CSeq: 1 REGISTER
+    Expires: 3600
+    Allow: INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, SUBSCRIBE, INFO
+    User-Agent: Sipp test
+    Content-Length: 0
+
+    ]]>
+  </send>
+
+  <recv response="401" auth="true">
+  </recv>
+
+  <send retrans="500">
+    <![CDATA[
+
+    REGISTER sip:[service]@[remote_ip]:[remote_port] SIP/2.0
+    Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+    Max-Forwards: 70
+    To: <sip:[service]@[remote_ip]:[remote_port]>
+    From: <sip:[service]@[remote_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]
+    Call-ID: [call_id]
+    Contact: <sip:[service]@[local_ip]:[local_port];line=[service]>
+    CSeq: 2 REGISTER
+    Expires: 3600
+    Allow: INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, SUBSCRIBE, INFO
+    User-Agent: Sipp test
+    [authentication]
+    Content-Length: 0
+
+    ]]>
+  </send>
+
+  <recv response="200" rtd="true">
+  </recv>
+
+  <!-- 2: Subscribe to presence with RLS  -->
+  <send retrans="500">
+    <![CDATA[
+
+    SUBSCRIBE sip:[service]-list@[remote_ip]:[remote_port] SIP/2.0
+    Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+    Max-Forwards: 70
+    To: <sip:[service]-list@[remote_ip]:[remote_port]>
+    From: <sip:[service]@[remote_ip]:[local_port]>;tag=[pid]SIPpTag00[call_number]
+    Contact: <sip:[service]@[local_ip]:[local_port];line=[service]>
+    Call-ID: a1///[call_id]
+    CSeq: 1 SUBSCRIBE
+    Event: presence
+    Expires: 300
+    Accept: multipart/related, application/rlmi+xml, application/pidf+xml
+    Allow-Events: presence.winfo, message-summary, xcap-diff, presence
+    User-Agent: Sipp test
+    Supported: eventlist
+    Content-Length:  0
+
+    ]]>
+  </send>
+
+  <!-- Check if contact field has user part "rls" as configured in OpenSIPS for RLS messages -->
+  <recv response="200" rtd="true">
+    <action>
+      <ereg regexp="sip:rls@.*" search_in="hdr" header="Contact:" check_it="true" assign_to="cnturi"/>
+    </action>
+  </recv>
+  <Reference variables="cnturi" />
+
+  <!-- Following RFC 3265 RLS server must send NOTIFY immediately -->
+  <recv request="NOTIFY"
+        rtd="true"
+        rtd="true"
+        crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+
+    SIP/2.0 200 OK
+    [last_Via:]
+    [last_From:]
+    [last_To:]
+    [last_Call-ID:]
+    [last_CSeq:]
+    Contact: <sip:[local_ip]:[local_port];line=[service];transport=[transport]>
+    Content-Length: 0
+
+    ]]>
+  </send>
+
+  <!-- definition of the response time repartition table (unit is ms)   -->
+  <ResponseTimeRepartition value="10, 20, 30, 40, 50, 100, 150, 200"/>
+
+  <!-- definition of the call length repartition table (unit is ms)     -->
+  <CallLengthRepartition value="10, 50, 100, 500, 1000, 5000, 10000"/>
+
+</scenario>
+
