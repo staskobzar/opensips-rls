@@ -1,0 +1,6 @@
+*.sample
+.*.swp
+tls/
+opensipsctlrc
+osipsconsolerc
+*log
